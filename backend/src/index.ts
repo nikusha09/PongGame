@@ -15,6 +15,14 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 4000;
 
+io.on('connection', (socket) => {
+  console.log(`Player connected: ${socket.id}`);
+
+  socket.on('disconnect', () => {
+    console.log(`Player disconnected: ${socket.id}`);
+  });
+});
+
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
