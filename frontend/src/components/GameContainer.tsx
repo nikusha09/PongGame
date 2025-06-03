@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import GameCanvas from './GameCanvas';
+import socket from '../socket';
 
 interface Player {
   paddleY: number;
@@ -70,10 +71,13 @@ const GameContainer: React.FC<Props> = ({ gameState, onPlayerMove }) => {
     };
   }, [inputDirection]);
 
-  // Notify parent of input change
   useEffect(() => {
-    if (onPlayerMove) onPlayerMove(inputDirection);
-  }, [inputDirection, onPlayerMove]);
+    if (inputDirection) {
+      socket.emit('movePaddle', inputDirection);
+    } else {
+      socket.emit('stopPaddle');
+    }
+  }, [inputDirection]);
 
   return <GameCanvas draw={drawGame(gameState)} />;
 };
