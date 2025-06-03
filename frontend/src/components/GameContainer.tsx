@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import GameCanvas from './GameCanvas';
 
 interface Player {
@@ -14,6 +14,7 @@ interface GameState {
 
 interface Props {
   gameState: GameState;
+  onPlayerMove?: (direction: 'up' | 'down' | null) => void;
 }
 
 const paddleWidth = 10;
@@ -45,7 +46,35 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
   }
 };
 
-const GameContainer: React.FC<Props> = ({ gameState }) => {
+const GameContainer: React.FC<Props> = ({ gameState, onPlayerMove }) => {
+
+  const [inputDirection, setInputDirection] = useState<null | 'up' | 'down'>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp') setInputDirection('up');
+      else if (e.key === 'ArrowDown') setInputDirection('down');
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp' && inputDirection === 'up') setInputDirection(null);
+      else if (e.key === 'ArrowDown' && inputDirection === 'down') setInputDirection(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [inputDirection]);
+
+  // Notify parent of input change
+  useEffect(() => {
+    if (onPlayerMove) onPlayerMove(inputDirection);
+  }, [inputDirection, onPlayerMove]);
+
   return <GameCanvas draw={drawGame(gameState)} />;
 };
 
