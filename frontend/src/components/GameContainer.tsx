@@ -47,15 +47,21 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
 const GameContainer: React.FC = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [inputDirection, setInputDirection] = useState<null | 'up' | 'down'>(null);
+  const [winnerId, setWinnerId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Listen for game state updates from the server
+    // Listen for game state updates
     socket.on('gameState', (state: GameState) => {
       setGameState(state);
     });
 
+    socket.on('gameOver', (winnerId: string) => {
+      setWinnerId(winnerId);
+    });
+
     return () => {
-      socket.off('gameState'); // Clean up listener on unmount
+      socket.off('gameState');
+      socket.off('gameOver');
     };
   }, []);
 
@@ -87,8 +93,34 @@ const GameContainer: React.FC = () => {
     }
   }, [inputDirection]);
 
-  // Render game canvas only if game state is available
-  return gameState ? <GameCanvas draw={drawGame(gameState)} /> : <div>Waiting for game to start...</div>;
+  // Render game canvas and winner overlay
+  return (
+    <>
+      {gameState ? (
+        <GameCanvas draw={drawGame(gameState)} />
+      ) : (
+        <div>Waiting for game to start...</div>
+      )}
+
+      {winnerId && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            fontSize: '40px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+        >
+          Player {winnerId} wins!
+        </div>
+      )}
+    </>
+  );
 };
 
 export default GameContainer;
