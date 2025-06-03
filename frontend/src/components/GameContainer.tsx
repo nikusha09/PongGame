@@ -28,7 +28,7 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
   ctx.arc(gameState.ballX, gameState.ballY, 10, 0, Math.PI * 2);
   ctx.fill();
 
-  // Draw paddles
+  // Draw paddles and scores
   const playerIds = Object.keys(gameState.players);
   if (playerIds.length >= 2) {
     const leftPlayer = gameState.players[playerIds[0]];
@@ -37,7 +37,6 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
     ctx.fillRect(0, leftPlayer.paddleY, paddleWidth, paddleHeight);
     ctx.fillRect(800 - paddleWidth, rightPlayer.paddleY, paddleWidth, paddleHeight);
 
-    // Draw scores
     ctx.font = '30px Arial';
     ctx.fillText(String(leftPlayer.score), 300, 50);
     ctx.fillText(String(rightPlayer.score), 500, 50);
@@ -48,20 +47,29 @@ const GameContainer: React.FC = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [inputDirection, setInputDirection] = useState<null | 'up' | 'down'>(null);
   const [winnerId, setWinnerId] = useState<string | null>(null);
+  const [inGame, setInGame] = useState<boolean>(true);
 
   useEffect(() => {
-    // Listen for game state updates
     socket.on('gameState', (state: GameState) => {
       setGameState(state);
+      setInGame(true);
+      setWinnerId(null);
     });
 
-    socket.on('gameOver', (winnerId: string) => {
-      setWinnerId(winnerId);
+    socket.on('gameOver', (winner: string) => {
+      setWinnerId(winner);
+    });
+
+    socket.on('playerLeft', () => {
+      setInGame(false);
+      setGameState(null);
+      setWinnerId(null);
     });
 
     return () => {
       socket.off('gameState');
       socket.off('gameOver');
+      socket.off('playerLeft');
     };
   }, []);
 
@@ -93,13 +101,27 @@ const GameContainer: React.FC = () => {
     }
   }, [inputDirection]);
 
-  // Render game canvas and winner overlay
+  const handleLeave = () => {
+    socket.emit('leaveRoom');
+    setInGame(false);
+    setGameState(null);
+    setWinnerId(null);
+  };
+
+  if (!inGame) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        <h2>Waiting for game to start...</h2>
+      </div>
+    );
+  }
+
   return (
-    <>
+    <div style={{ position: 'relative' }}>
       {gameState ? (
         <GameCanvas draw={drawGame(gameState)} />
       ) : (
-        <div>Waiting for game to start...</div>
+        <div style={{ textAlign: 'center', marginTop: '50px' }}>Waiting for game to start...</div>
       )}
 
       {winnerId && (
@@ -119,7 +141,21 @@ const GameContainer: React.FC = () => {
           Player {winnerId} wins!
         </div>
       )}
-    </>
+
+      <button
+        onClick={handleLeave}
+        style={{
+          position: 'absolute',
+          bottom: '10px',
+          right: '10px',
+          padding: '10px 20px',
+          fontSize: '16px',
+          cursor: 'pointer',
+        }}
+      >
+        Leave
+      </button>
+    </div>
   );
 };
 
