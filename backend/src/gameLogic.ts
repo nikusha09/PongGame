@@ -11,3 +11,19 @@ export function checkWallCollisions(gameState: GameState, canvasHeight: number) 
     }
 }
 
+export function checkPaddleCollisions(gameState: GameState, canvasWidth: number, paddleWidth: number, paddleHeight: number) {
+    for (const playerId in gameState.players) {
+        const player = gameState.players[playerId];
+
+        // Left paddle:
+        if (gameState.ballX <= paddleWidth && gameState.ballY >= player.paddleY && gameState.ballY <= player.paddleY + paddleHeight) {
+            gameState.ballVelocityX *= -1;
+        }
+
+        // Right paddle:
+        if (gameState.ballX >= canvasWidth - paddleWidth && gameState.ballY >= player.paddleY && gameState.ballY <= player.paddleY + paddleHeight) {
+            gameState.ballVelocityX *= -1;
+        }
+    }
+}
+
