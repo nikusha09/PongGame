@@ -27,3 +27,23 @@ export function checkPaddleCollisions(gameState: GameState, canvasWidth: number,
     }
 }
 
+export function checkScore(gameState: GameState, roomPlayers: string[], canvasWidth: number) {
+    // Right scores
+    if (gameState.ballX < 0) {
+        gameState.players[roomPlayers[1]].score++;
+        resetBall(gameState);
+    }
+    // Left scores
+    if (gameState.ballX > canvasWidth) {
+        gameState.players[roomPlayers[0]].score++;
+        resetBall(gameState);
+    }
+}
+
+function resetBall(gameState: GameState) {
+    // Position ball in center
+    gameState.ballX = 400;
+    gameState.ballY = 300;
+    gameState.ballVelocityX = 5 * (Math.random() > 0.5 ? 1 : -1);
+    gameState.ballVelocityY = 5 * (Math.random() > 0.5 ? 1 : -1);
+}
