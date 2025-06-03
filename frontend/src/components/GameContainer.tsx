@@ -13,15 +13,12 @@ interface GameState {
   players: { [id: string]: Player };
 }
 
-interface Props {
-  gameState: GameState;
-  onPlayerMove?: (direction: 'up' | 'down' | null) => void;
-}
-
 const paddleWidth = 10;
 const paddleHeight = 100;
 
 const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
+  if (!gameState) return;
+
   // Clear canvas
   ctx.clearRect(0, 0, 800, 600);
 
@@ -31,7 +28,7 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
   ctx.arc(gameState.ballX, gameState.ballY, 10, 0, Math.PI * 2);
   ctx.fill();
 
-  // Draw paddles (left and right)
+  // Draw paddles
   const playerIds = Object.keys(gameState.players);
   if (playerIds.length >= 2) {
     const leftPlayer = gameState.players[playerIds[0]];
@@ -47,9 +44,20 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
   }
 };
 
-const GameContainer: React.FC<Props> = ({ gameState, onPlayerMove }) => {
-
+const GameContainer: React.FC = () => {
+  const [gameState, setGameState] = useState<GameState | null>(null);
   const [inputDirection, setInputDirection] = useState<null | 'up' | 'down'>(null);
+
+  useEffect(() => {
+    // Listen for game state updates from the server
+    socket.on('gameState', (state: GameState) => {
+      setGameState(state);
+    });
+
+    return () => {
+      socket.off('gameState'); // Clean up listener on unmount
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -79,7 +87,8 @@ const GameContainer: React.FC<Props> = ({ gameState, onPlayerMove }) => {
     }
   }, [inputDirection]);
 
-  return <GameCanvas draw={drawGame(gameState)} />;
+  // Render game canvas only if game state is available
+  return gameState ? <GameCanvas draw={drawGame(gameState)} /> : <div>Waiting for game to start...</div>;
 };
 
 export default GameContainer;
