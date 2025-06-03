@@ -1,4 +1,6 @@
 import { GameState } from './types';
+import { io } from './index';
+
 
 export function updateBallPosition(gameState: GameState) {
   gameState.ballX += gameState.ballVelocityX;
@@ -46,4 +48,15 @@ function resetBall(gameState: GameState) {
     gameState.ballY = 300;
     gameState.ballVelocityX = 5 * (Math.random() > 0.5 ? 1 : -1);
     gameState.ballVelocityY = 5 * (Math.random() > 0.5 ? 1 : -1);
+}
+
+export function checkGameOver(roomName: string, gameState: GameState, roomPlayers: string[]) {
+  for (const playerId of roomPlayers) {
+    // Game is up to 5
+    if (gameState.players[playerId].score >= 5) {
+      io.to(roomName).emit('gameOver', playerId);
+      return true;
+    }
+  }
+  return false;
 }
