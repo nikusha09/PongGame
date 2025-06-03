@@ -13,23 +13,36 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ draw }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Resize canvas to fill parent width, keep aspect ratio
     const resizeCanvas = () => {
-      const parent = canvas.parentElement;
-      if (!parent) return;
+      const windowRatio = window.innerWidth / window.innerHeight;
+      const gameRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
 
-      const parentWidth = parent.clientWidth;
-      const scale = parentWidth / CANVAS_WIDTH;
-      canvas.style.width = `${CANVAS_WIDTH * scale}px`;
-      canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
+      if (windowRatio < gameRatio) {
+        // Window is narrower than game — scale by width
+        const scale = window.innerWidth / CANVAS_WIDTH;
+        canvas.style.width = `${(CANVAS_WIDTH * scale)-20}px`;
+        canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
+      } else {
+        // Window is wider than game — scale by height
+        const scale = window.innerHeight / CANVAS_HEIGHT;
+        canvas.style.width = `${CANVAS_WIDTH * scale}px`;
+        canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
+      }
     };
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    draw(ctx);
+
+    const render = () => {
+      draw(ctx);
+      requestAnimationFrame(render);
+    };
+
+    render();
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
@@ -41,7 +54,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ draw }) => {
       ref={canvasRef}
       width={CANVAS_WIDTH}
       height={CANVAS_HEIGHT}
-      style={{ border: '2px solid black', backgroundColor: '#000' }}
+      style={{ display: 'block', margin: '0 auto', backgroundColor: '#000', border: '2px solid black' }}
     />
   );
 };

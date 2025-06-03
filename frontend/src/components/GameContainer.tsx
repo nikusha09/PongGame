@@ -13,8 +13,8 @@ interface GameState {
   players: { [id: string]: Player };
 }
 
-const paddleWidth = 10;
 const paddleHeight = 100;
+const canvasHeight = 600;
 
 const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
   if (!gameState) return;
@@ -34,8 +34,8 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
     const leftPlayer = gameState.players[playerIds[0]];
     const rightPlayer = gameState.players[playerIds[1]];
 
-    ctx.fillRect(0, leftPlayer.paddleY, paddleWidth, paddleHeight);
-    ctx.fillRect(800 - paddleWidth, rightPlayer.paddleY, paddleWidth, paddleHeight);
+    ctx.fillRect(0, leftPlayer.paddleY, 10, paddleHeight);
+    ctx.fillRect(800 - 10, rightPlayer.paddleY, 10, paddleHeight);
 
     ctx.font = '30px Arial';
     ctx.fillText(String(leftPlayer.score), 300, 50);
@@ -45,12 +45,13 @@ const drawGame = (gameState: GameState) => (ctx: CanvasRenderingContext2D) => {
 
 const GameContainer: React.FC = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [inputDirection, setInputDirection] = useState<null | 'up' | 'down'>(null);
+  const [paddleY, setPaddleY] = useState(250); // initial paddle position
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [inGame, setInGame] = useState<boolean>(true);
 
+  // Listen to server events
   useEffect(() => {
-    socket.on('gameState', (state: GameState) => {
+    socket.on('gameStateUpdate', (state: GameState) => {
       setGameState(state);
       setInGame(true);
       setWinnerId(null);
@@ -60,60 +61,51 @@ const GameContainer: React.FC = () => {
       setWinnerId(winner);
     });
 
-    socket.on('playerLeft', () => {
+    socket.on('opponentLeft', () => {
       setInGame(false);
       setGameState(null);
       setWinnerId(null);
     });
 
     return () => {
-      socket.off('gameState');
+      socket.off('gameStateUpdate');
       socket.off('gameOver');
-      socket.off('playerLeft');
+      socket.off('opponentLeft');
     };
   }, []);
 
+  // Handle paddle movement keys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp') setInputDirection('up');
-      else if (e.key === 'ArrowDown') setInputDirection('down');
-    };
+      setPaddleY((prev) => {
+        let newY = prev;
+        if (e.key === 'ArrowUp') newY = Math.max(0, prev - 10);
+        else if (e.key === 'ArrowDown') newY = Math.min(canvasHeight - paddleHeight, prev + 10);
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp' && inputDirection === 'up') setInputDirection(null);
-      else if (e.key === 'ArrowDown' && inputDirection === 'down') setInputDirection(null);
+        socket.emit('paddleMove', { position: newY });
+        return newY;
+      });
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [inputDirection]);
-
-  useEffect(() => {
-    if (inputDirection) {
-      socket.emit('movePaddle', inputDirection);
-    } else {
-      socket.emit('stopPaddle');
-    }
-  }, [inputDirection]);
-
-  const handleLeave = () => {
-    socket.emit('leaveRoom');
-    setInGame(false);
-    setGameState(null);
-    setWinnerId(null);
-  };
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (!inGame) {
     return (
-      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+      <div style={{ marginLeft: '300px' }}>
         <h2>Waiting for game to start...</h2>
       </div>
     );
+  }
+
+  // Map winner id to "First Player" or "Second Player"
+  let winnerLabel = '';
+  if (winnerId && gameState) {
+    const playerIds = Object.keys(gameState.players);
+    if (playerIds[0] === winnerId) winnerLabel = 'First Player';
+    else if (playerIds[1] === winnerId) winnerLabel = 'Second Player';
+    else winnerLabel = 'Unknown Player';
   }
 
   return (
@@ -121,7 +113,7 @@ const GameContainer: React.FC = () => {
       {gameState ? (
         <GameCanvas draw={drawGame(gameState)} />
       ) : (
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>Waiting for game to start...</div>
+        <div style={{ marginLeft: '300px' }}> <h2>Waiting for game to start...</h2></div>
       )}
 
       {winnerId && (
@@ -138,23 +130,9 @@ const GameContainer: React.FC = () => {
             zIndex: 1000,
           }}
         >
-          Player {winnerId} wins!
+          {winnerLabel} wins!
         </div>
       )}
-
-      <button
-        onClick={handleLeave}
-        style={{
-          position: 'absolute',
-          bottom: '10px',
-          right: '10px',
-          padding: '10px 20px',
-          fontSize: '16px',
-          cursor: 'pointer',
-        }}
-      >
-        Leave
-      </button>
     </div>
   );
 };

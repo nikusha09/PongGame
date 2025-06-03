@@ -1,13 +1,12 @@
 import React from 'react';
-import Game from './components/Game';
+import GameContainer from './components/GameContainer';
 
-function App() {
+const App: React.FC = () => {
   return (
     <div>
-      <h1>Real-Time Pong</h1>
-      <Game />
+      <GameContainer />
     </div>
   );
-}
+};
 
 export default App;
