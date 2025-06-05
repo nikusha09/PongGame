@@ -48,6 +48,7 @@ const GameContainer: React.FC = () => {
   const [paddleY, setPaddleY] = useState(250); // initial paddle position
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [inGame, setInGame] = useState<boolean>(true);
+  const [isStarted, setIsStarted] = useState<boolean>(false);
 
   // Listen to server events
   useEffect(() => {
@@ -65,18 +66,26 @@ const GameContainer: React.FC = () => {
       setInGame(false);
       setGameState(null);
       setWinnerId(null);
+      setIsStarted(false);
+    });
+
+    socket.on('gameStarted', () => {
+      setIsStarted(true);
     });
 
     return () => {
       socket.off('gameStateUpdate');
       socket.off('gameOver');
       socket.off('opponentLeft');
+      socket.off('gameStarted');
     };
   }, []);
 
   // Handle paddle movement keys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isStarted) return; // Ignore paddle movement if game not started
+
       setPaddleY((prev) => {
         let newY = prev;
         if (e.key === 'ArrowUp') newY = Math.max(0, prev - 10);
@@ -89,7 +98,7 @@ const GameContainer: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isStarted]);
 
   if (!inGame) {
     return (
@@ -110,7 +119,14 @@ const GameContainer: React.FC = () => {
 
   return (
     <div style={{ position: 'relative' }}>
-      {gameState ? (
+      {!isStarted ? (
+        <div style={{ marginLeft: '300px' }}>
+        <h2 style={{color: "black"}}>***Both players must click to <i><b>"Start Game"</b></i> button to start the game***</h2> <br />
+          <button onClick={() => socket.emit('startGame')} style={{ fontSize: '24px', marginLeft: '30%' }}>
+            Start Game
+          </button>
+        </div>
+      ) : gameState ? (
         <GameCanvas draw={drawGame(gameState)} />
       ) : (
         <div style={{ marginLeft: '300px' }}> <h2>Waiting for game to start...</h2></div>

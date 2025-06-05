@@ -17,4 +17,5 @@ export interface Room {
     players: string[];
     gameState: GameState;
     interval?: NodeJS.Timeout;
+    playersReady?: Set<string>;
 }

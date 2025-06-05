@@ -63,6 +63,7 @@ io.on('connection', (socket) => {
       name: roomName,
       players: [player1.id, player2.id],
       gameState: initialGameState,
+      playersReady: new Set<string>(),
     };
 
     // Join sockets to room
@@ -72,9 +73,6 @@ io.on('connection', (socket) => {
     // Notify players
     io.to(roomName).emit('roomAssigned', { room: roomName, players: [player1Id, player2Id] });
     console.log(`Room created: ${roomName} with players ${player1Id} and ${player2Id}`);
-
-    // Start the game loop for this room
-    startGameLoop(rooms[roomName]);
   }
 
   // Listen for paddle movement updates from clients
@@ -88,6 +86,23 @@ io.on('connection', (socket) => {
       // Clamp paddle position within reasonable bounds (0 to canvas height - paddle height)
       const clampedPosition = Math.max(0, Math.min(position, 600 - 100));
       player.paddleY = clampedPosition;
+    }
+  });
+
+  socket.on('startGame', () => {
+    const roomName = findPlayerRoom(socket.id);
+    if (!roomName) return;
+
+    const room = rooms[roomName];
+    if (!room.playersReady) {
+      room.playersReady = new Set<string>();
+    }
+    room.playersReady.add(socket.id);
+
+    if (room.playersReady.size === room.players.length && !room.interval) {
+      startGameLoop(room);
+      io.to(roomName).emit('gameStarted');
+      console.log(`Game started in room ${roomName} by all players`);
     }
   });
 
